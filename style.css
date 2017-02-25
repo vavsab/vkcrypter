@@ -14,3 +14,8 @@
     cursor: pointer;
     display: block;
 }
+
+.decrypted-text {
+    color: green;
+    font-weight: bold;
+}

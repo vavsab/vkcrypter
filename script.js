@@ -1,22 +1,35 @@
-var isEncryptionEnabled = false;
+var isEncryptionEnabled;
+var messagesInvertal;
+var chatMainButtonInterval;
+var sendButtonClickPending;
+var refreshInterval = 1000;
 
 function setPassword() {
 	chrome.runtime.sendMessage({type: "request_password"}, function (response) {
 		if (response) {	
+			resetPassword();
 			isEncryptionEnabled = true;
 			updateChatMainButton();
+			updateMessages();
 		}
 	});
 }
 
 function resetPassword() {
 	isEncryptionEnabled = false;
-	updateChatMainButton();
+	$('div.decrypted-text').remove();
+	$('img.secured-message').css('display', 'block');
+
+	$('.decryption-skipped, .decrypted')
+		.removeClass('decrypted')
+		.removeClass('decryption-skipped')
+		.addClass('crypted');
 }
 
 function togglePassword() { 
 	if (isEncryptionEnabled){
 		resetPassword();
+		updateChatMainButton();
 	 } else {
 		 setPassword();
 	 }
@@ -33,6 +46,11 @@ function sendMessage(onFinishCallback) {
 }
 
 function updateChatMainButton() {
+	if (chatMainButtonInterval) {
+		clearInterval(chatMainButtonInterval);
+		chatMainButtonInterval = null;
+	}
+
 	var message = isEncryptionEnabled ? "Выключить VkCrypter" : "Включить VkCrypter";
 
 	if ( $('.ui_actions_menu._ui_menu').length <= $('.ui_actions_menu._ui_menu .im-action-toggle-crypt').length) {
@@ -52,44 +70,78 @@ function updateChatMainButton() {
 	
 	if (bodyToAttachHandler) {	
 		bodyToAttachHandler.addEventListener('click', function (event) {
+			if (sendButtonClickPending)
+				return;
+
 			if (!isEncryptionEnabled)
 				return;
 
-			if ($(event.target).hasClass('im-send-btn_send')) {
+			var sendButton = $(event.target);
+			if (sendButton.hasClass('im-send-btn_send')) {
+				
 				sendMessage(function () {
-					event.target.dispatchEvent(event);
+					sendButtonClickPending = true;
+					sendButton.click();
+					sendButtonClickPending = false;
 				});
 
-				return false;
+				event.stopPropagation();
 			}
 		}, true);
 	}
 
 	$('.im-chat-input--text').css('background-color', isEncryptionEnabled ? '#ffb' : '#fff');
+
+	chatMainButtonInterval = setInterval(updateChatMainButton, refreshInterval);
 }
 
 function updateMessages() {
-	$('.im_msg_text:not(.crypted .encrypted), .im-mess--text:not(.crypted .encrypted)')
+	if (messagesInvertal) {
+		clearInterval(messagesInvertal);
+		messagesInvertal = null;
+	}
+
+	$('.im_msg_text:not(.crypted .decrypted), .im-mess--text:not(.crypted .decrypted)')
 	.each(function (index, messageContainer) {
 		var textDiv = $(messageContainer);
 		if (textDiv.html().indexOf(Constants.marker) == 0) {
 			textDiv.addClass("crypted");
 			var e = $("<div><img /><div class='crypted-text' style='display: none;'></div></div>");
 			
-			$('img', e)
-				.attr("src", "https://www.databreaches.net/wp-content/uploads/favicon.png")
-				.attr("width", "30")
-				.attr("height", "30")
+			var img = $('img', e)
+				.attr("src", chrome.extension.getURL('lock.png'))
+				.attr("width", "20")
+				.attr("height", "20")
 				.attr("class", "secured-message");
 		
 			$('div.crypted-text', e).html(textDiv.html());
 			textDiv.html(e.html());
 
-			textDiv.click(togglePassword);
+			textDiv.click(setPassword);
 		}
 	});
+
+	if (isEncryptionEnabled) {
+		$('.im_msg_text.crypted:not(.decryption-skipped), .im-mess--text.crypted:not(.decryption-skipped)').each(function (index, container) {
+			var messageContainer = $(container);
+			var text = $('.crypted-text', messageContainer).text();
+
+			chrome.runtime.sendMessage({type: 'decrypt', text: text}, function (response) {
+				if (!response || !response.decryptedText) {
+					messageContainer.addClass('decryption-skipped');
+					return;
+				}
+
+				messageContainer.addClass('decrypted');
+				messageContainer.removeClass('crypted');
+				messageContainer.append('<div class="decrypted-text">' + response.decryptedText +'</div>');
+				$('img', messageContainer).css('display', 'none');
+			});
+		});
+	}
+
+	messagesInvertal = setInterval(updateMessages, refreshInterval);
 }
 
-setInterval(updateChatMainButton, 4000);
-setInterval(updateMessages, 4000);
-
+updateChatMainButton();
+updateMessages();

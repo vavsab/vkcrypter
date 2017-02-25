@@ -1,22 +1,9 @@
 var password = null;
 var passwordWasSet = false;
 
-// Called when the user clicks on the browser action.
-chrome.browserAction.onClicked.addListener(function(tab) {
-  // No tabs or host permissions needed!
-  console.log('Turning ' + tab.url + ' red!');
-  chrome.tabs.executeScript({
-		code: 'document.body.innerHTML = "' + plus(1, 2) + '";'
-	});
-  // chrome.tabs.executeScript({
-    // code: 'document.body.innerHTML = "<img src=https://media.giphy.com/media/TXqOjZfu9PJfO/giphy.gif />";'
-  // });
-});
-
 // Handle requests for passwords
 chrome.runtime.onMessage.addListener(
 	function(request, sender, sendResponse) {
-		console.log(request);
 		if (request.type === 'request_password') {
 			requestPassword(function (passwordWasSet) {
 				sendResponse(passwordWasSet);
@@ -27,7 +14,6 @@ chrome.runtime.onMessage.addListener(
 			var encryptFunction = function () {
 				if (password != null) {
 					var encryptedText = encrypt(request.text);
-					console.log("encryptedText: " + encryptedText);
 					sendResponse({encryptedText: encryptedText});
 				} else {
 					sendResponse();
@@ -45,7 +31,6 @@ chrome.runtime.onMessage.addListener(
 			var decryptFunction = function () {
 				if (password != null) {
 					var decryptedText = decrypt(request.text);
-					console.log("decryptedText: " + decryptedText);
 					sendResponse({decryptedText: decryptedText});
 				} else {
 					sendResponse();
@@ -63,7 +48,6 @@ chrome.runtime.onMessage.addListener(
 });
 
 function requestPassword(callback) {
-	console.log("requestPassword()");
 	chrome.tabs.create({
 		url: chrome.extension.getURL('dialog.html'),
 		active: false
@@ -71,8 +55,8 @@ function requestPassword(callback) {
 		var windowId = chrome.windows.create({
 			tabId: tab.id,
 			type: 'popup',
-			width: 200,
-			height: 100,
+			width: 300,
+			height: 70,
 			focused: true
 		});
 
@@ -94,5 +78,11 @@ function encrypt(text) {
 }
 
 function decrypt(text) {
-	return CryptoJS.AES.decrypt(text, password).toString(CryptoJS.enc.Utf8);
+	try {
+		text = text.replace(Constants.marker, '');
+		return CryptoJS.AES.decrypt(text, password).toString(CryptoJS.enc.Utf8);
+	} catch (e) {
+		return;
+	}
+	
 }
