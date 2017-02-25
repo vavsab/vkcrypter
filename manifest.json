@@ -1,0 +1,26 @@
+{
+  "manifest_version": 2,
+  "version": "1.0",
+  "name": "VkCrypter",
+  
+  "content_scripts": [
+    {
+      "matches": ["*://vk.com/*"],
+      "js": ["jquery.js", "global.js", "script.js"],
+      "css": ["style.css"]
+    }
+  ],
+  
+  "background": {
+    "scripts": ["aes.js", "global.js", "background.js"],
+    "persistent": false
+  },
+  
+  "browser_action": {
+    "default_icon": "icon.png"
+  },
+  
+  "permissions": [
+	  "activeTab"
+  ]
+}
