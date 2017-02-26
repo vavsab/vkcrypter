@@ -35,9 +35,12 @@ function togglePassword() {
 	 }
 }
 
-function sendMessage(onFinishCallback) { 
+function encryptMessage(onFinishCallback) { 
 	var input = $('.im_editable.im-chat-input--text._im_text').first();
 	var text = input.text();
+
+	if (text.startsWith(Constants.marker))
+		return;
 
 	chrome.runtime.sendMessage({type: 'encrypt', text: text}, function (response) {
 		input.text(response.encryptedText);
@@ -64,11 +67,34 @@ function updateChatMainButton() {
 			.append(link);
 	}
 
-
 	var bodyToAttachHandler = $('body:not(.crypterListenerAttached)')
 		.addClass('crypterListenerAttached')[0];
 	
 	if (bodyToAttachHandler) {	
+		bodyToAttachHandler.addEventListener('keydown', function (event) {
+			var isAllowed;
+			if ($('._im_submit_btn.on').attr('data-val') == 1) {
+				// Ctrl + Enter
+				isAllowed = event.keyCode == 13 && event.ctrlKey;	
+			} else {
+				// Enter. But ignore Shift + Enter
+				isAllowed = event.keyCode == 13 && !event.shiftKey;	
+			}
+
+			if (isAllowed && $(':focus').hasClass('im-chat-input--text')) {	
+				var sendButton = $('.im-send-btn_send');
+				if (sendButton.length > 0){
+					encryptMessage(function () {
+						sendButtonClickPending = true;
+						sendButton.click();
+						sendButtonClickPending = false;
+					});
+
+					event.stopPropagation();
+				}
+			}
+		}, true);
+
 		bodyToAttachHandler.addEventListener('click', function (event) {
 			if (sendButtonClickPending)
 				return;
@@ -79,7 +105,7 @@ function updateChatMainButton() {
 			var sendButton = $(event.target);
 			if (sendButton.hasClass('im-send-btn_send')) {
 				
-				sendMessage(function () {
+				encryptMessage(function () {
 					sendButtonClickPending = true;
 					sendButton.click();
 					sendButtonClickPending = false;
