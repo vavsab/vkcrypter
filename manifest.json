@@ -1,6 +1,6 @@
 {
   "manifest_version": 2,
-  "version": "1.0",
+  "version": "1.0.1",
   "name": "VkCrypter",
   
   "content_scripts": [
@@ -14,6 +14,16 @@
   "background": {
     "scripts": ["aes.js", "global.js", "background.js"],
     "persistent": true
+  },
+
+  "page_action": {
+      "default_icon": "lock.png"
+  },
+
+  "icons":  {
+    "16": "lock16.png",
+    "48": "lock48.png",
+    "128": "lock128.png"
   },
   
   "permissions": [
