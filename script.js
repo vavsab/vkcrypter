@@ -72,6 +72,9 @@ function updateChatMainButton() {
 	
 	if (bodyToAttachHandler) {	
 		bodyToAttachHandler.addEventListener('keydown', function (event) {
+			if (!isEncryptionEnabled)
+				return;
+
 			var isAllowed;
 			if ($('._im_submit_btn.on').attr('data-val') == 1) {
 				// Ctrl + Enter
